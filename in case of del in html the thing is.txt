@@ -1,0 +1,7 @@
+in case of del in html the thing is striked through like this.
+in case of insert its underlined
+<address> this is used to make whole paragraph into italic format.
+style="color:Tomato;" for background color
+style="border:2px solid Tomato;"
+style="background-color:rgb(255, 99, 71);"
+hsla read this

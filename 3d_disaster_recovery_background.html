@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Disaster Recovery Animation - Hope Rising</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: #0f0f0f;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #info-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            color: #00d966;
+            font-size: 13px;
+            text-shadow: 0 0 15px #00d966;
+            z-index: 10;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            background: rgba(15, 15, 15, 0.3);
+            padding: 15px 20px;
+            border: 1px solid #00d966;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        #info-overlay p {
+            margin: 5px 0;
+        }
+
+        .stat {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 8px;
+            border-top: 1px solid #00d96633;
+            padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info-overlay">
+        <p>🌍 LIVE EARTH - ROTATING UNIVERSE</p>
+        <p>Real-time 3D Animation</p>
+        <div class="stat">
+            <p>🌎 Rotating Earth</p>
+            <p>⭐ Live Star Field</p>
+            <p>Status: Connected to Universe</p>
+        </div>
+    </div>
+
+    <!-- THREE.JS LIBRARY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // ============================================================
+        // 3D DISASTER RECOVERY ANIMATION - COMPLETE STANDALONE VERSION
+        // ============================================================
+        // Theme: Black & Green (Hope Rising from Disaster)
+        // Features: Live particles, falling debris, recovery rays, healing sphere
+        // ============================================================
+
+        class DisasterRecoveryScene {
+            constructor() {
+                this.initScene();
+                this.createLighting();
+                this.createParticles();
+                this.createDebris();
+                this.createRecoveryRays();
+                this.createHealingSphere();
+                this.createShockwaveRing();
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            initScene() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0f0f0f); // Pure black
+                this.scene.fog = new THREE.FogExp2(0x0f0f0f, 0.003);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 50;
+
+                // Renderer
+                const container = document.getElementById('canvas-container');
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: 'high-performance'
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+                container.appendChild(this.renderer.domElement);
+
+                this.clock = new THREE.Clock();
+                this.time = 0;
+            }
+
+            createLighting() {
+                // Ambient light - soft green glow
+                const ambientLight = new THREE.AmbientLight(0x00d966, 0.3);
+                this.scene.add(ambientLight);
+
+                // Main healing light - green
+                this.mainLight = new THREE.PointLight(0x00d966, 2.5);
+                this.mainLight.position.set(0, 25, 40);
+                this.mainLight.castShadow = true;
+                this.mainLight.shadow.mapSize.width = 2048;
+                this.mainLight.shadow.mapSize.height = 2048;
+                this.scene.add(this.mainLight);
+
+                // Secondary light - red disaster
+                this.disasterLight = new THREE.PointLight(0xff3333, 1.5);
+                this.disasterLight.position.set(-40, 15, -30);
+                this.scene.add(this.disasterLight);
+
+                // Directional light for depth
+                const dirLight = new THREE.DirectionalLight(0x00d966, 0.4);
+                dirLight.position.set(50, 50, 50);
+                dirLight.castShadow = true;
+                this.scene.add(dirLight);
+            }
+
+            createParticles() {
+                // Recovery particles - rising green particles showing hope
+                const particleCount = 1500;
+                const particleGeometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+
+                    // Position
+                    positions[i3] = (Math.random() - 0.5) * 250;
+                    positions[i3 + 1] = (Math.random() - 0.5) * 250;
+                    positions[i3 + 2] = (Math.random() - 0.5) * 250;
+
+                    // Velocity (upward bias for recovery)
+                    velocities[i3] = (Math.random() - 0.5) * 0.3;
+                    velocities[i3 + 1] = Math.random() * 0.25 + 0.1;
+                    velocities[i3 + 2] = (Math.random() - 0.5) * 0.3;
+
+                    // Color - bright green
+                    colors[i3] = 0; // R
+                    colors[i3 + 1] = 217 / 255; // G
+                    colors[i3 + 2] = 102 / 255; // B
+                }
+
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    size: 0.4,
+                    sizeAttenuation: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    vertexColors: true,
+                    emissive: 0x00d966,
+                    emissiveIntensity: 0.3
+                });
+
+                this.particles = new THREE.Points(particleGeometry, particleMaterial);
+                this.scene.add(this.particles);
+
+                this.particleCount = particleCount;
+                this.particleVelocities = velocities;
+                this.particleGeometry = particleGeometry;
+            }
+
+            createDebris() {
+                // Falling debris - represents disaster
+                this.debrisGroup = new THREE.Group();
+                this.scene.add(this.debrisGroup);
+
+                this.debrisObjects = [];
+                const debrisCount = 12;
+
+                for (let i = 0; i < debrisCount; i++) {
+                    const size = Math.random() * 2.5 + 1.5;
+                    const geometry = new THREE.BoxGeometry(size, size * 0.7, size * 0.5);
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0xff3333,
+                        roughness: 0.6,
+                        metalness: 0.4,
+                        emissive: 0x661111,
+                        emissiveIntensity: 0.2
+                    });
+
+                    const debris = new THREE.Mesh(geometry, material);
+                    debris.position.set(
+                        (Math.random() - 0.5) * 100,
+                        120 + Math.random() * 60,
+                        (Math.random() - 0.5) * 40
+                    );
+
+                    debris.castShadow = true;
+                    debris.receiveShadow = true;
+
+                    debris.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+
+                    debris.userData = {
+                        velocity: {
+                            x: (Math.random() - 0.5) * 0.6,
+                            y: -0.9 - Math.random() * 0.6,
+                            z: (Math.random() - 0.5) * 0.5
+                        },
+                        rotationVelocity: {
+                            x: (Math.random() - 0.5) * 0.06,
+                            y: (Math.random() - 0.5) * 0.06,
+                            z: (Math.random() - 0.5) * 0.06
+                        }
+                    };
+
+                    this.debrisGroup.add(debris);
+                    this.debrisObjects.push(debris);
+                }
+            }
+
+            createRecoveryRays() {
+                // Recovery rays - hope rays emanating outward
+                this.rayGroup = new THREE.Group();
+                this.scene.add(this.rayGroup);
+
+                const rayCount = 16;
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = (i / rayCount) * Math.PI * 2;
+                    const distance = 70;
+
+                    const points = [
+                        new THREE.Vector3(0, 0, 0),
+                        new THREE.Vector3(
+                            Math.cos(angle) * distance,
+                            Math.sin(angle * 0.7) * distance * 0.6,
+                            Math.sin(angle) * distance
+                        )
+                    ];
+
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const lineMaterial = new THREE.LineBasicMaterial({
+                        color: 0x00d966,
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    this.rayGroup.add(line);
+                }
+            }
+
+            createHealingSphere() {
+                // Central healing sphere - beacon of hope
+                const sphereGeometry = new THREE.IcosahedronGeometry(10, 5);
+                const sphereMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00d966,
+                    emissive: 0x00d966,
+                    emissiveIntensity: 0.6,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.5,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+
+                this.healingSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                this.scene.add(this.healingSphere);
+
+                // Solid healing sphere inside
+                const innerSphereGeometry = new THREE.SphereGeometry(8, 32, 32);
+                const innerMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00d966,
+                    emissive: 0x00d966,
+                    emissiveIntensity: 0.3,
+                    transparent: true,
+                    opacity: 0.15
+                });
+
+                this.innerSphere = new THREE.Mesh(innerSphereGeometry, innerMaterial);
+                this.scene.add(this.innerSphere);
+            }
+
+            createShockwaveRing() {
+                // Shockwave ring - energy pulse
+                const ringGeometry = new THREE.TorusGeometry(30, 0.8, 16, 120);
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00d966,
+                    emissive: 0x00d966,
+                    emissiveIntensity: 0.9,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                this.shockwaveRing = new THREE.Mesh(ringGeometry, ringMaterial);
+                this.shockwaveRing.position.y = -20;
+                this.scene.add(this.shockwaveRing);
+
+                // Second ring (offset)
+                const ringGeometry2 = new THREE.TorusGeometry(35, 0.6, 16, 120);
+                this.shockwaveRing2 = new THREE.Mesh(ringGeometry2, ringMaterial.clone());
+                this.shockwaveRing2.position.y = -18;
+                this.shockwaveRing2.material.emissiveIntensity = 0.6;
+                this.scene.add(this.shockwaveRing2);
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            updateParticles() {
+                const positionAttribute = this.particleGeometry.getAttribute('position');
+
+                for (let i = 0; i < this.particleCount; i++) {
+                    const i3 = i * 3;
+
+                    let x = positionAttribute.getX(i);
+                    let y = positionAttribute.getY(i);
+                    let z = positionAttribute.getZ(i);
+
+                    // Apply velocity
+                    x += this.particleVelocities[i3];
+                    y += this.particleVelocities[i3 + 1];
+                    z += this.particleVelocities[i3 + 2];
+
+                    // Reset when particle goes too high
+                    if (y > 150) {
+                        x = (Math.random() - 0.5) * 250;
+                        y = -120;
+                        z = (Math.random() - 0.5) * 250;
+                    }
+
+                    // Wrap around bounds
+                    if (Math.abs(x) > 180) x = -x * 0.9;
+                    if (Math.abs(z) > 180) z = -z * 0.9;
+
+                    positionAttribute.setXYZ(i, x, y, z);
+                }
+
+                positionAttribute.needsUpdate = true;
+            }
+
+            updateDebris() {
+                this.debrisObjects.forEach(debris => {
+                    const userData = debris.userData;
+
+                    // Update position
+                    debris.position.x += userData.velocity.x;
+                    debris.position.y += userData.velocity.y;
+                    debris.position.z += userData.velocity.z;
+
+                    // Update rotation
+                    debris.rotation.x += userData.rotationVelocity.x;
+                    debris.rotation.y += userData.rotationVelocity.y;
+                    debris.rotation.z += userData.rotationVelocity.z;
+
+                    // Air resistance
+                    userData.velocity.x *= 0.993;
+                    userData.velocity.z *= 0.993;
+                    userData.velocity.y -= 0.012; // Gravity
+
+                    // Reset when fallen too far
+                    if (debris.position.y < -200) {
+                        debris.position.set(
+                            (Math.random() - 0.5) * 100,
+                            120 + Math.random() * 60,
+                            (Math.random() - 0.5) * 40
+                        );
+                        userData.velocity = {
+                            x: (Math.random() - 0.5) * 0.6,
+                            y: -0.9 - Math.random() * 0.6,
+                            z: (Math.random() - 0.5) * 0.5
+                        };
+                    }
+                });
+            }
+
+            updateAnimation() {
+                this.time += this.clock.getDelta();
+
+                // Healing sphere - pulsing center
+                this.healingSphere.rotation.x += 0.0015;
+                this.healingSphere.rotation.y += 0.0025;
+                const healingScale = 1 + Math.sin(this.time * 1.5) * 0.25;
+                this.healingSphere.scale.set(healingScale, healingScale, healingScale);
+
+                this.innerSphere.rotation.x -= 0.0008;
+                this.innerSphere.rotation.y -= 0.0012;
+                this.innerSphere.scale.set(
+                    0.8 + Math.sin(this.time * 2) * 0.15,
+                    0.8 + Math.sin(this.time * 2) * 0.15,
+                    0.8 + Math.sin(this.time * 2) * 0.15
+                );
+
+                // Shockwave - expanding rings
+                this.shockwaveRing.rotation.z += 0.012;
+                this.shockwaveRing.scale.set(
+                    1 + Math.sin(this.time * 1.8) * 0.35,
+                    1 + Math.sin(this.time * 1.8) * 0.35,
+                    1
+                );
+                this.shockwaveRing.material.emissiveIntensity = 0.6 + Math.sin(this.time * 2.5) * 0.4;
+
+                this.shockwaveRing2.rotation.z -= 0.015;
+                this.shockwaveRing2.scale.set(
+                    0.95 + Math.cos(this.time * 1.8) * 0.3,
+                    0.95 + Math.cos(this.time * 1.8) * 0.3,
+                    1
+                );
+                this.shockwaveRing2.material.emissiveIntensity = 0.4 + Math.cos(this.time * 2.5) * 0.35;
+
+                // Rotate recovery rays
+                this.rayGroup.rotation.z += 0.0008;
+                this.rayGroup.rotation.x += 0.0003;
+
+                // Dynamic camera movement
+                this.camera.position.x = Math.sin(this.time * 0.15) * 12;
+                this.camera.position.y = Math.cos(this.time * 0.12) * 8;
+                this.camera.lookAt(0, 0, 0);
+
+                // Update particles and debris
+                this.updateParticles();
+                this.updateDebris();
+
+                // Dynamic lighting
+                this.mainLight.intensity = 2 + Math.sin(this.time * 1.2);
+                this.disasterLight.intensity = 1.2 + Math.cos(this.time * 0.8) * 0.4;
+            }
+
+            render() {
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.updateAnimation();
+                this.render();
+            }
+        }
+
+        // Initialize the scene when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new DisasterRecoveryScene();
+        });
+
+        // Initialize immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (!window.sceneInitialized) {
+                    new DisasterRecoveryScene();
+                    window.sceneInitialized = true;
+                }
+            });
+        } else {
+            if (!window.sceneInitialized) {
+                new DisasterRecoveryScene();
+                window.sceneInitialized = true;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Alpha | Admin Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root { --primary-dark: #0f172a; --accent-blue: #0ea5e9; --danger-red: #ef4444; }
+        body { background-color: var(--primary-dark); color: white; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        #map { height: 600px; border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .victim-card { transition: all 0.3s ease; }
+        .victim-card:hover { transform: translateY(-4px); background: rgba(255, 255, 255, 0.1); }
+        .status-badge { 
+            display: inline-block; 
+            padding: 0.25rem 0.75rem; 
+            border-radius: 9999px; 
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .status-unassigned { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
+        .status-assigned { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.5); }
+        .status-in_progress { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.5); }
+        .status-resolved { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.5); }
+        .scrollbar-custom::-webkit-scrollbar { width: 6px; }
+        .scrollbar-custom::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .disaster-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .disaster-medical { background: #fca5a5; color: #7f1d1d; }
+        .disaster-flood { background: #93c5fd; color: #1e3a8a; }
+        .disaster-earthquake { background: #fbbf24; color: #78350f; }
+        .disaster-fire { background: #fb7185; color: #831843; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <header class="glass p-6 rounded-3xl mb-6 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-red-600 p-3 rounded-xl"><i class="fas fa-shield-alt text-xl animate-pulse"></i></div>
+                <div>
+                    <h1 class="text-2xl font-bold uppercase tracking-tighter">Admin Control Center</h1>
+                    <p class="text-gray-400 text-sm">Real-time Victim Tracking & Dispatch</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-2xl font-bold text-red-400" id="victim-count">0</p>
+                <p class="text-gray-400 text-sm">Active Cases</p>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Map Section -->
+            <div class="lg:col-span-2">
+                <div class="glass p-4 rounded-[2.5rem]">
+                    <div class="mb-4 flex justify-between items-center">
+                        <h2 class="font-bold text-lg"><i class="fas fa-map-location-dot text-blue-400 mr-2"></i>Live Victim Map</h2>
+                        <button onclick="refreshVictims()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-full text-sm transition">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <!-- Victims List Section -->
+            <div class="lg:col-span-1">
+                <div class="glass p-4 rounded-[2.5rem] flex flex-col h-full">
+                    <h2 class="font-bold text-lg mb-4"><i class="fas fa-list text-yellow-400 mr-2"></i>Active Cases</h2>
+                    <div id="victims-list" class="space-y-3 overflow-y-auto scrollbar-custom flex-1">
+                        <p class="text-gray-400 text-center py-8">
+                            <i class="fas fa-hourglass-start text-2xl mb-2 block"></i>
+                            Loading victims...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-3xl font-bold text-red-400" id="stat-unassigned">0</p>
+                <p class="text-gray-400 text-sm mt-1">Unassigned</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-3xl font-bold text-blue-400" id="stat-assigned">0</p>
+                <p class="text-gray-400 text-sm mt-1">Assigned</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-3xl font-bold text-green-400" id="stat-in_progress">0</p>
+                <p class="text-gray-400 text-sm mt-1">In Progress</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-3xl font-bold text-purple-400" id="stat-resolved">0</p>
+                <p class="text-gray-400 text-sm mt-1">Resolved</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = "http://10.2.8.241:5000";
+        let map = L.map('map').setView([20.5, 78.9], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        let markers = {};
+        const disasterColors = {
+            'medical': '#fca5a5',
+            'flood': '#93c5fd',
+            'earthquake': '#fbbf24',
+            'fire': '#fb7185'
+        };
+
+        async function refreshVictims() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/victims`);
+                const data = await res.json();
+                
+                updateVictimsList(data.victims);
+                updateStats(data.victims);
+                updateMap(data.victims);
+                
+                document.getElementById('victim-count').textContent = data.total_victims;
+            } catch (e) {
+                document.getElementById('victims-list').innerHTML = `
+                    <div class="text-center text-red-400 p-4 text-sm">
+                        <i class="fas fa-exclamation-triangle text-xl block mb-2"></i>
+                        ❌ Cannot connect to backend at ${BACKEND_URL}
+                    </div>
+                `;
+                console.error("Error:", e);
+            }
+        }
+
+        function updateVictimsList(victims) {
+            const list = document.getElementById('victims-list');
+            if (victims.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-center py-8"><i class="fas fa-inbox text-2xl mb-2 block"></i>No active cases</p>';
+                return;
+            }
+
+            list.innerHTML = victims.map(v => `
+                <div class="victim-card glass p-3 rounded-xl border border-white/10">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <p class="font-bold text-white">Victim #${v.id}</p>
+                            <p class="text-xs text-gray-400">${v.timestamp}</p>
+                        </div>
+                        <div class="disaster-icon disaster-${v.disaster}">
+                            ${getDisasterIcon(v.disaster)}
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-300 mb-2 line-clamp-2">${v.symptoms}</p>
+                    
+                    <div class="mb-2">
+                        <span class="status-badge status-${v.status.toLowerCase()}">${v.status}</span>
+                    </div>
+                    
+                    <div class="space-y-1 text-xs text-gray-400 mb-2">
+                        <p><i class="fas fa-map-pin text-red-400 mr-1"></i>${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}</p>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="updateStatus(${v.id}, 'ASSIGNED')" class="flex-1 bg-blue-600/20 hover:bg-blue-600/40 px-2 py-1 rounded text-xs transition">
+                            Assign
+                        </button>
+                        <button onclick="updateStatus(${v.id}, 'RESOLVED')" class="flex-1 bg-green-600/20 hover:bg-green-600/40 px-2 py-1 rounded text-xs transition">
+                            Resolve
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats(victims) {
+            const stats = {
+                'UNASSIGNED': 0,
+                'ASSIGNED': 0,
+                'IN_PROGRESS': 0,
+                'RESOLVED': 0
+            };
+            
+            victims.forEach(v => {
+                stats[v.status]++;
+            });
+            
+            document.getElementById('stat-unassigned').textContent = stats.UNASSIGNED;
+            document.getElementById('stat-assigned').textContent = stats.ASSIGNED;
+            document.getElementById('stat-in_progress').textContent = stats['IN_PROGRESS'];
+            document.getElementById('stat-resolved').textContent = stats.RESOLVED;
+        }
+
+        function updateMap(victims) {
+            // Remove old markers
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+            
+            // Add new markers
+            victims.forEach(v => {
+                const color = disasterColors[v.disaster] || '#94a3b8';
+                const marker = L.marker([v.lat, v.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background: ${color}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                                <i class="fas fa-${v.disaster === 'medical' ? 'heart-pulse' : v.disaster === 'flood' ? 'water' : v.disaster === 'earthquake' ? 'burst' : 'fire'} text-white text-xs"></i>
+                              </div>`,
+                        iconSize: [30, 30]
+                    })
+                }).bindPopup(`<strong>Victim #${v.id}</strong><br>${v.symptoms}<br><small>${v.status}</small>`);
+                
+                marker.addTo(map);
+                markers[v.id] = marker;
+            });
+            
+            if (victims.length > 0) {
+                const bounds = L.latLngBounds(victims.map(v => [v.lat, v.lng]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        async function updateStatus(victimId, newStatus) {
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/update_victim`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ victim_id: victimId, status: newStatus })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    refreshVictims();
+                }
+            } catch (e) {
+                console.error("Error updating status:", e);
+            }
+        }
+
+        function getDisasterIcon(disaster) {
+            const icons = {
+                'medical': '❤️',
+                'flood': '💧',
+                'earthquake': '📍',
+                'fire': '🔥'
+            };
+            return icons[disaster] || '🆘';
+        }
+
+        // Auto-refresh every 5 seconds
+        refreshVictims();
+        setInterval(refreshVictims, 5000);
+    </script>
+</body>
+</html>

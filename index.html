@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL ALPHA | Emergency Response AI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root { 
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --accent-green: #00d966;
+            --accent-red: #ff3333;
+            --accent-dark-green: #00a347;
+            --text-primary: #ffffff;
+            --text-secondary: #00d966;
+            --border-color: #00d966;
+            --support-color: #ff3333;
+            --calm-purple: #1a1a1a;
+        }
+        
+        body { 
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', 'System UI', -apple-system, sans-serif;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(0, 217, 102, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255, 51, 51, 0.04) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container-main {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Peaceful Soft Panels */
+        .neon-panel {
+            background: rgba(30, 30, 30, 0.6);
+            border: 1.5px solid var(--border-color);
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 217, 102, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .neon-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 102, 0.08), transparent);
+            animation: gentleShimmer 4s infinite ease-in-out;
+        }
+        
+        @keyframes gentleShimmer {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        .neon-panel-red {
+            border-color: var(--support-color);
+            box-shadow: 0 8px 32px rgba(255, 51, 51, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        
+        .neon-panel-red::before {
+            background: linear-gradient(90deg, transparent, rgba(255, 51, 51, 0.1), transparent);
+        }
+        
+        /* Header */
+        .header-futuristic {
+            background: linear-gradient(135deg, rgba(0, 217, 102, 0.08) 0%, rgba(255, 51, 51, 0.05) 100%);
+            border-bottom: 2px solid var(--accent-green);
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 217, 102, 0.1);
+        }
+        
+        .header-futuristic h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+            text-transform: none;
+            text-shadow: 0 2px 8px rgba(0, 217, 102, 0.15);
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-futuristic p {
+            color: var(--accent-green);
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            text-transform: none;
+            font-weight: 500;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: calmPulse 2.5s infinite ease-in-out;
+            box-shadow: 0 0 8px rgba(0, 217, 102, 0.4);
+        }
+        
+        @keyframes calmPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        
+        /* Chat Container */
+        .chat-container { 
+            height: 50vh; 
+            overflow-y: auto; 
+            scroll-behavior: smooth;
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.3) 0%, rgba(0, 217, 102, 0.02) 100%);
+        }
+        
+        .user-msg { 
+            background: linear-gradient(135deg, rgba(255, 51, 51, 0.15) 0%, rgba(0, 217, 102, 0.05) 100%);
+            border-left: 3px solid var(--accent-red);
+            border-radius: 0.75rem;
+            margin-left: auto;
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(255, 51, 51, 0.08);
+        }
+        
+        .ai-msg { 
+            background: linear-gradient(135deg, rgba(0, 217, 102, 0.12) 0%, rgba(0, 217, 102, 0.04) 100%);
+            border-left: 3px solid var(--accent-green);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 217, 102, 0.08);
+        }
+        
+        /* Map Styling */
+        #map { 
+            height: 300px; 
+            border-radius: 1rem;
+            border: 1.5px solid var(--accent-green);
+            box-shadow: 0 4px 16px rgba(0, 217, 102, 0.15);
+        }
+        
+        /* Emergency SOS Button */
+        .sos-btn {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-red) 0%, #cc2222 100%);
+            border: 2px solid var(--accent-red);
+            color: white;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(255, 51, 51, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            text-transform: none;
+            animation: helpPulse 2s infinite ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        
+        .sos-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 24px rgba(255, 51, 51, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        
+        .sos-btn:active {
+            transform: scale(0.95);
+        }
+        
+        @keyframes helpPulse {
+            0% { box-shadow: 0 4px 16px rgba(255, 51, 51, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 8px 24px rgba(255, 51, 51, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+            100% { box-shadow: 0 4px 16px rgba(255, 51, 51, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+        }
+        
+        /* Input Area */
+        .input-panel {
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.5) 0%, rgba(0, 217, 102, 0.03) 100%);
+            border: 1.5px solid var(--border-color);
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 217, 102, 0.05);
+            border-radius: 1rem;
+        }
+        
+        .input-field, .select-field {
+            background: rgba(20, 20, 20, 0.7);
+            border: 1.5px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+        }
+        
+        .input-field:focus, .select-field:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 12px rgba(0, 217, 102, 0.2), inset 0 0 6px rgba(0, 217, 102, 0.08);
+            background: rgba(20, 20, 20, 0.9);
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-dark-green) 100%);
+            border: 1.5px solid var(--accent-green);
+            color: #000;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: none;
+            letter-spacing: 0.03em;
+            box-shadow: 0 4px 12px rgba(0, 217, 102, 0.2);
+            border-radius: 0.5rem;
+        }
+        
+        .send-btn:hover {
+            box-shadow: 0 6px 20px rgba(0, 217, 102, 0.3);
+            transform: translateY(-2px);
+        }
+
+        #mic-btn {
+            cursor: pointer;
+        }
+
+        #mic-btn:hover {
+            background: rgba(0, 217, 102, 0.15) !important;
+            box-shadow: 0 0 12px rgba(0, 217, 102, 0.2);
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 217, 102, 0.05); }
+        ::-webkit-scrollbar-thumb { 
+            background: var(--accent-green);
+            border-radius: 4px;
+            box-shadow: 0 0 8px rgba(0, 217, 102, 0.2);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-green);
+            box-shadow: 0 0 12px rgba(0, 217, 102, 0.3);
+        }
+        
+        /* Animation */
+        @keyframes glow-text {
+            0%, 100% { color: var(--text-primary); }
+            50% { color: var(--accent-green); }
+        }
+        
+        .glow-text {
+            animation: glow-text 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-main">
+        <!-- FUTURISTIC HEADER -->
+        <header class="header-futuristic mb-6">
+            <div>
+                <span class="status-indicator"></span>
+                <h1>🌿 Sentinel Alpha</h1>
+                <p>💚 Emergency Response with Hope • AI Powered 💙</p>
+            </div>
+        </header>
+
+        <!-- MAIN GRID LAYOUT -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 py-6 max-w-7xl mx-auto">
+            
+            <!-- LEFT PANEL: SOS & MAP -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- SOS BUTTON -->
+                <div class="neon-panel-red p-8 text-center flex flex-col items-center justify-center">
+                    <button onclick="quickSOS()" class="sos-btn mb-4">
+                        Help<br><small style="font-size: 0.6em;">NOW</small>
+                    </button>
+                    <p class="text-xs" style="color: var(--text-primary); font-weight: 600; letter-spacing: 0.05em;">💙 Emergency Dispatch</p>
+                    <p class="text-xs mt-2" style="color: var(--accent-green); font-weight: 600; letter-spacing: 0.05em;">💚 Immediate Help</p>
+                </div>
+
+                <!-- GPS MAP -->
+                <div class="neon-panel p-4">
+                    <h3 class="text-sm font-bold mb-3" style="color: var(--accent-green); letter-spacing: 0.05em;">📍 Your Location</h3>
+                    <div id="map"></div>
+                </div>
+
+            </div>
+
+            <!-- CENTER & RIGHT PANEL: CHAT -->
+            <div class="lg:col-span-2 neon-panel p-0 flex flex-col overflow-hidden">
+                
+                <!-- CHAT HEADER -->
+                <div class="p-4 border-b-2" style="background: linear-gradient(135deg, rgba(0, 217, 102, 0.1) 0%, rgba(255, 51, 51, 0.1) 100%); border-color: var(--accent-green); display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="font-bold" style="color: var(--text-primary); letter-spacing: 0.05em;">
+                        <i class="fas fa-heart" style="color: var(--support-color); margin-right: 0.5rem;"></i>Sentinel Alpha - Care
+                    </h2>
+                    <button onclick="toggleVoice()" id="voice-btn" class="text-xs px-3 py-1 transition font-semibold" style="background: rgba(0, 217, 102, 0.15); border: 1.5px solid var(--accent-green); color: var(--accent-green); border-radius: 0.5rem;">
+                        🔊 Voice <span id="voice-status">ON</span>
+                    </button>
+                </div>
+
+                <!-- CHAT BOX -->
+                <div id="chat-box" class="chat-container p-6 space-y-4 flex-1">
+                    <div class="ai-msg p-4 max-w-[90%] text-sm leading-relaxed">
+                        💚 <strong>System Ready</strong><br>
+                        I'm here to help. Describe your situation and I'll provide guidance with care and hope.
+                    </div>
+                </div>
+
+                <!-- INPUT PANEL -->
+                <div class="input-panel space-y-3">
+                    
+                    <!-- Disaster Type Selector -->
+                    <div class="flex gap-2 items-center">
+                        <label class="text-xs font-bold" style="color: var(--accent-green); letter-spacing: 0.05em;">Category:</label>
+                        <select id="env-type" class="select-field flex-1 text-xs">
+                            <option value="medical">🏥 Medical Emergency</option>
+                            <option value="fire">🔥 Fire</option>
+                            <option value="flood">💧 Flood/Water</option>
+                            <option value="earthquake">⚡ Earthquake</option>
+                            <option value="storm">🌪️ Storm/Severe Weather</option>
+                        </select>
+                    </div>
+
+                <!-- Message Input Panel with Language Selector -->
+                <div class="flex gap-2 items-center">
+                    <select id="language-select" class="select-field text-xs flex-shrink-0" style="min-width: 120px;">
+                        <option value="en-IN">🇮🇳 English (India)</option>
+                        <option value="hi-IN">🇮🇳 हिंदी</option>
+                        <option value="ta-IN">🇮🇳 தமிழ்</option>
+                        <option value="te-IN">🇮🇳 తెలుగు</option>
+                        <option value="kn-IN">🇮🇳 ಕನ್ನಡ</option>
+                        <option value="ml-IN">🇮🇳 മലയാളം</option>
+                        <option value="bn-IN">🇮🇳 বাংলা</option>
+                        <option value="gu-IN">🇮🇳 ગુજરાતી</option>
+                        <option value="pa-IN">🇮🇳 ਪੰਜਾਬੀ</option>
+                    </select>
+                    <button id="mic-btn" onclick="startListening()" class="px-3 py-2 transition text-sm" style="border: 1.5px solid var(--accent-green); color: var(--accent-green); background: transparent; border-radius: 0.5rem; font-weight: 600;">
+                        🎤 SPEAK
+                    </button>
+                    <input type="text" id="user-input" 
+                           placeholder="Describe your situation... speak or type... (Press Enter to send)"
+                           class="input-field flex-1 text-sm"
+                           onkeypress="handleEnterKey(event)">
+                    <button onclick="sendMessage()" class="send-btn px-4 py-2 text-sm">
+                        SEND ➤
+                    </button>
+                </div>
+
+                    <p id="mic-status" class="text-xs text-center" style="color: var(--accent-green); opacity: 0.6;">Click 🎤 to speak • System listens and responds</p>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- CONFIG & SESSION ---
+        let voiceEnabled = true;
+        // Always connect to the server IP - not localhost
+        const BACKEND_URL = "http://172.22.78.233:5000";
+        const sessionID = "session_" + Math.random().toString(36).substring(7);
+        
+        console.log("🔍 DEBUG INFO:");
+        console.log("Current hostname:", window.location.hostname);
+        console.log("Backend URL:", BACKEND_URL);
+        console.log("Session ID:", sessionID);
+        
+        let map = L.map('map').setView([20.5, 78.9], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let marker;
+
+        // --- 2. VOICE RECOGNITION (MIC) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            // Get default language (Indian English)
+            recognition.lang = document.getElementById('language-select')?.value || 'en-IN';
+
+            recognition.onstart = () => {
+                isListening = true;
+                console.log("🎤 Recognition started. Language:", recognition.lang);
+            };
+
+            recognition.onresult = (e) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const transcript = e.results[i][0].transcript;
+
+                    if (e.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Show interim results as user speaks
+                if (interimTranscript) {
+                    document.getElementById('user-input').value = finalTranscript + interimTranscript;
+                    document.getElementById('user-input').style.opacity = '0.7';
+                }
+
+                // When final result arrives
+                if (finalTranscript) {
+                    document.getElementById('user-input').value = finalTranscript.trim();
+                    document.getElementById('user-input').style.opacity = '1';
+                    console.log("✅ Final transcript:", finalTranscript);
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.error("❌ Mic Error:", e.error);
+                const errorMsgs = {
+                    'no-speech': '🔴 No speech detected. Please speak louder and try again.',
+                    'audio-capture': '🔴 No microphone found. Check your device settings.',
+                    'not-allowed': '🔴 Microphone permission denied. Allow access in browser settings.',
+                    'network': '🔴 Network error. Check your internet connection.',
+                    'service-not-allowed': '🔴 Speech recognition service not allowed.'
+                };
+                
+                const msg = errorMsgs[e.error] || `🔴 Error: ${e.error}`;
+                alert(msg);
+                document.getElementById('user-input').placeholder = msg;
+                stopListening();
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                console.log("🎤 Recognition ended");
+                stopListening();
+            };
+
+            // Update language when dropdown changes
+            document.addEventListener('DOMContentLoaded', () => {
+                const langSelect = document.getElementById('language-select');
+                if (langSelect) {
+                    langSelect.addEventListener('change', (e) => {
+                        recognition.lang = e.target.value;
+                        console.log("🌐 Language changed to:", e.target.value);
+                    });
+                }
+            });
+
+            // Also set up language listener on page load (backup)
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupLanguageListener);
+            } else {
+                setupLanguageListener();
+            }
+
+            function setupLanguageListener() {
+                const langSelect = document.getElementById('language-select');
+                if (langSelect && !langSelect._listenerAdded) {
+                    langSelect.addEventListener('change', (e) => {
+                        recognition.lang = e.target.value;
+                        console.log("🌐 Language changed to:", e.target.value);
+                    });
+                    langSelect._listenerAdded = true;
+                }
+            }
+        } else {
+            console.warn("⚠️ Speech Recognition not supported in this browser");
+        }
+
+        function startListening() {
+            if (!recognition) {
+                alert("❌ Speech recognition not supported in your browser. Use Chrome, Edge, or Safari.");
+                return;
+            }
+
+            if (isListening) {
+                console.warn("Already listening...");
+                return;
+            }
+
+            try {
+                // Stop any previous recognition session
+                try { recognition.stop(); } catch (e) {}
+                
+                // Update language before starting
+                const langSelect = document.getElementById('language-select');
+                if (langSelect) {
+                    recognition.lang = langSelect.value;
+                }
+
+                // Clear input and start fresh
+                document.getElementById('user-input').value = '';
+                document.getElementById('user-input').placeholder = '🎤 Listening... Speak now...';
+                document.getElementById('user-input').style.opacity = '1';
+                
+                recognition.start();
+                document.getElementById('mic-btn').classList.add('text-red-500', 'animate-pulse');
+                console.log("🎤 Listening started for language:", recognition.lang);
+            } catch (e) {
+                console.warn("Mic error at start:", e);
+            }
+        }
+
+        function stopListening() {
+            if (recognition && isListening) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.warn("Stop error:", e);
+                }
+            }
+            isListening = false;
+            document.getElementById('mic-btn').classList.remove('text-red-500', 'animate-pulse');
+            document.getElementById('user-input').placeholder = 'Describe your situation... speak or type... (Press Enter to send)';
+            document.getElementById('user-input').style.opacity = '1';
+        }
+
+        // --- 3. GEOLOCATION ---
+        navigator.geolocation.watchPosition(pos => {
+            const { latitude, longitude } = pos.coords;
+            if (marker) map.removeLayer(marker);
+            marker = L.marker([latitude, longitude]).addTo(map);
+            map.setView([latitude, longitude], 15);
+        }, err => console.warn("Location blocked"), { enableHighAccuracy: true });
+
+        // --- 4. OFFLINE MODE - Context-specific emergency guidance ---
+        let isOfflineMode = false;
+
+        const offlineResponses = {
+            medical: [
+                "🏥 OFFLINE MODE ACTIVATED 🏥\n\nCall emergency immediately . Keep the person calm and comfortable. If unconscious, check breathing and perform CPR if needed (chest compressions: 100-120 per minute). Don't move them unless in danger.",
+                "🏥 OFFLINE MODE - SEVERE BLEEDING 🏥\n\nApply direct pressure with clean cloth. Elevate the wound above heart if possible. For choking: Use Heimlich maneuver (stand behind, thrust upward into abdomen above navel). Keep the person in a recovery position.",
+                "🏥 OFFLINE MODE - POISONING / OVERDOSE 🏥\n\nCall Poison Control (1-800-222-1222 USA). Remove affected clothing if chemical exposure. For chest pain: Sit down, chew aspirin if available, call 911 immediately. Never induce vomiting unless instructed.",
+                "🏥 OFFLINE MODE - BURNS 🏥\n\nCool burned area with water (NOT ice) for 10-20 minutes. Remove jewelry and tight clothing. Cover with clean, dry cloth. Seek medical help immediately for severe burns. Don't apply ice directly.",
+                "🏥 OFFLINE MODE - SEIZURES 🏥\n\nKeep person safe and cushion head. Don't restrain or put anything in mouth. Place on side if unconscious. Clear area of hazards. Time the seizure. Seek emergency help if it lasts over 5 minutes."
+            ],
+            fire: [
+                "🔥 OFFLINE MODE ACTIVATED 🔥\n\nIf fire is small and contained, try a fire extinguisher (aim at base). If spreading rapidly: GET OUT NOW. Use stairs only, never elevators. Stay low under smoke. Touch doors before opening - if hot, find another exit.",
+                "🔥 OFFLINE MODE - EVACUATION 🔥\n\nEXIT IMMEDIATELY. Warn others loudly. Find nearest exit or window. Close doors behind you to slow fire spread. Meet at safe location outside building. Count people to ensure everyone evacuated.",
+                "🔥 OFFLINE MODE - TRAPPED INDOORS 🔥\n\nLock door and block vents/gaps with wet cloth. Stay low where air is cleaner. Signal from window with cloth. Wait for rescue - don't jump. Write your location on paper visible from outside if possible.",
+                "🔥 OFFLINE MODE - SMOKE INHALATION 🔥\n\nGet fresh air immediately. Crawl under smoke to find cleaner air. Seek medical help if difficulty breathing continues. Remove charred clothing only if not stuck to skin. Drink water to clear throat.",
+                "🔥 OFFLINE MODE - STOPPING SPREAD 🔥\n\nMove away from chemical storage areas and fuel. Close doors to contain fire. Use stairs exclusively. Help elderly/disabled people evacuate first. Never use elevators. Keep emergency exits clear always."
+            ],
+            flood: [
+                "💧 OFFLINE MODE ACTIVATED 💧\n\nMOVE TO HIGHER GROUND NOW. Don't walk or drive through flooded areas - water currents are extremely powerful and deadly. Even 6 inches of water can sweep vehicles away. Avoid downed power lines in water at all costs.",
+                "💧 OFFLINE MODE - TRAPPED IN BUILDING 💧\n\nMove to roof or highest floor. Stay on roof edge. Wave bright cloth or light to attract rescuer attention. Don't enter floodwater - invisible currents, debris, and contamination create extreme danger.",
+                "💧 OFFLINE MODE - VEHICLE STUCK 💧\n\nDO NOT STAY IN VEHICLE. Climb out immediately and move to higher ground. Vehicles are swept away tiny currents in floods. Swim or wade to safety using rope if available. Never attempt to drive through water.",
+                "💧 OFFLINE MODE - POST-FLOOD 💧\n\nCheck for injuries and signs of hypothermia. Boil all water before drinking. Avoid contaminated food (may be toxic). Watch for gas leaks by smell. Document all damage with photos for insurance. Clean wounds with clean water.",
+                "💧 OFFLINE MODE - PREPARATION 💧\n\nLearn evacuation routes in advance. Keep emergency kit ready: water, food, medicine, flashlight, batteries. Sign up for flood alerts on phone. Move valuables and documents to upper floors. Have car full of gas during storm season."
+            ],
+            earthquake: [
+                "⚡ OFFLINE MODE ACTIVATED ⚡\n\nDROP-COVER-HOLD: Drop to hands and knees immediately. Cover head and neck with your arms underneath sturdy desk/furniture. Hold until shaking stops completely. Stay away from windows, mirrors, and heavy objects that could fall.",
+                "⚡ OFFLINE MODE - OUTDOORS 🌍\n\nMove away from buildings, power lines, trees, and vehicles. Lie flat or crouch low in open area. If outside, avoid moving back into building. Stay in open until aftershocks stop. Watch for falling debris and broken glass.",
+                "⚡ OFFLINE MODE - TRAPPED UNDER DEBRIS 💪\n\nDon't shout unnecessarily - conserve energy. Tap on pipes/walls to signal rescuers. Cover mouth with cloth to avoid inhaling dust. Survival possible for days - stay calm. Wiggle free if possible.",
+                "⚡ OFFLINE MODE - AFTER EARTHQUAKE ⚡\n\nCheck for injuries - provide first aid. Turn off gas if smell detected. Expect aftershocks (often smaller but damaging). Avoid elevators and damaged buildings. Document structural damage for insurance claims.",
+                "⚡ OFFLINE MODE - BUILDING COLLAPSE 🏢\n\nMove away from exterior walls. Get under sturdy furniture like table or desk. If in hallway, crouch against interior wall. Protect head and neck with arms. Stay put until movement stops completely."
+            ],
+            storm: [
+                "🌪️ OFFLINE MODE ACTIVATED 🌪️\n\nMOVE TO SHELTER NOW. Go to basement or interior room away from windows. Stay there until storm passes. Don't open windows - this doesn't reduce damage. Listen to weather alerts for updates. Bring pets and important docs.",
+                "🌪️ OFFLINE MODE - NO SHELTER AVAILABLE 🌪️\n\nAvoid trees, power lines, power poles, and vehicles. Lie flat in a ditch or low-lying area. Cover head and neck with hands/arms. If in vehicle, abandon it and lie flat in ditch if tornado visible. Never try to outrun in car.",
+                "🌪️ OFFLINE MODE - FLOODING RISK 🌪️\n\nMove to higher ground immediately during heavy rain. Avoid walking/driving through water - even shallow water moves fast. Heavy rainfall reduces visibility - use headlights and slow down. Don't attempt water crossings.",
+                "🌪️ OFFLINE MODE - HIGH WINDS/LIGHTNING ⚡\n\nMove indoors or into hard-topped vehicle. Avoid open areas, tall isolated objects, water bodies. If caught outside, crouch low, avoid touching metal. If struck by lightning: Call 911, perform CPR if unconscious, don't move unnecessarily.",
+                "🌪️ OFFLINE MODE - PREPARATION 🌪️\n\nSecure outdoor objects during storm season. Close all doors and windows. Stay inside away from windows during severe weather. Know location of basement/shelter. Keep emergency supplies ready. Download weather alert apps on phone."
+            ]
+        };
+
+        function getOfflineResponse() {
+            const disasterType = document.getElementById('env-type').value;
+            const responses = offlineResponses[disasterType] || offlineResponses.medical;
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
+        // --- 5. CORE CHAT LOGIC ---
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const val = input.value.trim();
+            if (!val) return;
+
+            // Update UI (User Message)
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="user-msg p-4 max-w-[85%] text-sm shadow-md">${val}</div></div>`;
+            input.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            console.log("📤 Sending message to:", BACKEND_URL + "/chatbot");
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/chatbot`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: sessionID,
+                        symptoms: val,
+                        disaster: document.getElementById('env-type').value,
+                        lat: marker?.getLatLng().lat || 0,
+                        lng: marker?.getLatLng().lng || 0
+                    }),
+                    signal: AbortSignal.timeout(30000) // 30 second timeout for AI response
+                });
+                
+                console.log("📥 Response status:", res.status);
+                
+                const data = await res.json();
+                const reply = data.advice.join(". ");
+
+                // Update UI (AI Response)
+                chatBox.innerHTML += `<div class="ai-msg p-4 max-w-[90%] text-sm shadow-lg leading-relaxed">${reply}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                isOfflineMode = false;
+                console.log("✅ Online mode - Got response from AI");
+                
+                // Text to Speech
+                if(voiceEnabled) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(reply);
+                    const langSelect = document.getElementById('language-select')?.value || 'en-IN';
+                    utterance.lang = langSelect;
+                    utterance.rate = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                console.error("❌ Error:", e.message);
+                console.error("Failed to connect to:", BACKEND_URL);
+                
+                isOfflineMode = true;
+                const offlineAdvice = getOfflineResponse();
+                
+                // Show offline message
+                chatBox.innerHTML += `<div class="neon-panel-red p-4 text-sm leading-relaxed"><strong>⚠️ OFFLINE MODE ENABLED</strong><br><br>${offlineAdvice}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                
+                // Text to speech for offline guidance
+                if(voiceEnabled) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(offlineAdvice.replace(/🏥|🔥|💧|⚡|🌪️|OFFLINE MODE ACTIVATED|OFFLINE MODE -/g, ''));
+                    const langSelect = document.getElementById('language-select')?.value || 'en-IN';
+                    utterance.lang = langSelect;
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        }
+
+        // --- 6. GUEST SOS DISPATCH ---
+        async function quickSOS() {
+            const lat = marker?.getLatLng().lat || 0;
+            const lng = marker?.getLatLng().lng || 0;
+            const chatBox = document.getElementById('chat-box');
+            
+            console.log("🚨 SOS Button Clicked!");
+            console.log("Sending SOS to:", BACKEND_URL + "/dispatch_volunteer");
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/dispatch_volunteer`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        symptoms: "MANUAL SOS TRIGGERED",
+                        disaster: document.getElementById('env-type').value,
+                        lat: lat,
+                        lng: lng
+                    }),
+                    signal: AbortSignal.timeout(10000)
+                });
+                
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                
+                const data = await res.json();
+                const msg = `🚨 � HELP IS ON THE WAY 💚 🚨\nRegistered ID: #${data.victim_id}\n💚 RESCUE TEAM DISPATCHED`;
+                
+                chatBox.innerHTML += `<div class="neon-panel p-4 text-sm text-center border-2" style="border-color: var(--accent-green);"><strong style="color: var(--accent-green);">${msg.replace(/\n/g, '<br>')}</strong></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                isOfflineMode = false;
+                
+                if(voiceEnabled) {
+                    const utterance = new SpeechSynthesisUtterance("Help is on the way");
+                    utterance.lang = document.getElementById('language-select')?.value || 'en-IN';
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                isOfflineMode = true;
+                const disasterType = document.getElementById('env-type').value;
+                const emergencyGuidance = {
+                    medical: "📍 Location saved. CALL 911 IMMEDIATELY. Provide your coordinates and symptoms. Emergency services are aware of the SOS situation.",
+                    fire: "📍 Location saved. CALL 911 IMMEDIATELY. Evacuate area now. Do not wait for help - GET TO SAFETY FIRST.",
+                    flood: "📍 Location saved. CALL 911 or emergency services. MOVE TO HIGHER GROUND NOW. Do not attempt water crossing.",
+                    earthquake: "📍 Location saved. Take shelter immediately using DROP-COVER-HOLD. Call 911 when quaking stops. Help will arrive.",
+                    storm: "📍 Location saved. SEEK SHELTER NOW. Move to basement or interior room. Call 911 if in danger."
+                };
+                
+                const sosMsg = emergencyGuidance[disasterType] || emergencyGuidance.medical;
+                chatBox.innerHTML += `<div class="neon-panel-red p-4 text-sm text-center border-2" style="border-color: var(--support-color);"><strong style="color: var(--support-color);">🆘 OFFLINE SOS ACTIVATED 🆘<br><br>${sosMsg}</strong></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                
+                if(voiceEnabled) {
+                    const utterance = new SpeechSynthesisUtterance("SOS activated. Call emergency. Your location is noted.");
+                    utterance.lang = document.getElementById('language-select')?.value || 'en-IN';
+                    window.speechSynthesis.speak(utterance);
+                }
+                console.error("SOS offline - backend unreachable:", e);
+            }
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            const statusEl = document.getElementById('voice-status');
+            const btnEl = document.getElementById('voice-btn');
+            if(voiceEnabled) {
+                statusEl.innerText = 'ON';
+                btnEl.style.background = 'rgba(0, 217, 102, 0.15)';
+                btnEl.style.borderColor = 'var(--accent-green)';
+                btnEl.style.color = 'var(--accent-green)';
+            } else {
+                statusEl.innerText = 'OFF';
+                btnEl.style.background = 'rgba(255, 51, 51, 0.15)';
+                btnEl.style.borderColor = 'var(--support-color)';
+                btnEl.style.color = 'var(--support-color)';
+            }
+            if(!voiceEnabled) window.speechSynthesis.cancel();
+        }
+
+        function handleEnterKey(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function toggleWidget() {
+            // For future use
+        }
+    </script>
+</body>
+</html>
